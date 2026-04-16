@@ -10,8 +10,7 @@ The main entry point for policy reviews. Implements `IScoutEngine` and `IDisposa
 // Direct construction
 var engine = new ScoutEngine(new ScoutOptions
 {
-    ApiKey = "sk-ant-...",
-    NativeLibraryPath = "/optional/path/to/libscout_wrapper.dylib"
+    ApiKey = "your-visionfi-scout-key"
 });
 
 // With logging
@@ -65,8 +64,8 @@ Configuration for the Scout engine.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `ApiKey` | `string?` | `null` | Anthropic API key. If null, resolved from `ANTHROPIC_API_KEY` env var or `~/.anthropic/api-key` file. |
-| `NativeLibraryPath` | `string?` | `null` | Path to the native Scout library. If null, uses default .NET native library resolution. |
+| `ApiKey` | `string?` | `null` | Scout API key provided by VisionFI. If null, resolved from `SCOUT_API_KEY` environment variable. |
+| `NativeLibraryPath` | `string?` | `null` | Path to the native Scout engine library. If null, uses the bundled runtime from the NuGet package. |
 
 ---
 
@@ -165,7 +164,7 @@ builder.Services.AddScout(options =>
     options.ApiKey = builder.Configuration["Scout:ApiKey"];
 });
 
-// With default options (API key from env var or file)
+// With default options (API key from SCOUT_API_KEY environment variable)
 builder.Services.AddScout();
 ```
 
@@ -190,7 +189,7 @@ public class PolicyReviewController(IScoutEngine scout) : ControllerBase
 ```json
 {
   "Scout": {
-    "ApiKey": "sk-ant-..."
+    "ApiKey": "your-visionfi-scout-key"
   }
 }
 ```

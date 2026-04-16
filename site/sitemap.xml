@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/api-reference/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/architecture/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/faq/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/getting-started/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+    <url>
+         <loc>https://visionfi.github.io/visionfi-packages-docs/security/</loc>
+         <lastmod>2026-04-16</lastmod>
+    </url>
+</urlset>

@@ -5,7 +5,7 @@ Get a policy review running in under 5 minutes.
 ## Prerequisites
 
 - **.NET 9.0+** — [Download](https://dotnet.microsoft.com/download)
-- **Anthropic API key** — [Get one here](https://console.anthropic.com/)
+- **Scout API key** — provided by VisionFI during onboarding
 
 ## Installation
 
@@ -38,11 +38,11 @@ dotnet add package VisionFI.Scout
 ```csharp title="Program.cs"
 using VisionFI.Scout;
 
-// Create the engine — API key is resolved from:
-//   1. ScoutOptions.ApiKey (if set)
-//   2. ANTHROPIC_API_KEY environment variable
-//   3. ~/.anthropic/api-key file
-var engine = new ScoutEngine(new ScoutOptions());
+// Create the engine with the key VisionFI provided
+var engine = new ScoutEngine(new ScoutOptions
+{
+    ApiKey = "your-visionfi-scout-key"
+});
 
 // Load your policy PDF
 var doc = PolicyDocument.FromFile("consumer-loan-policy.pdf");
@@ -59,9 +59,17 @@ Console.WriteLine($"\nTokens: in={result.InputTokens}  out={result.OutputTokens}
 ### 3. Run it
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
 dotnet run
 ```
+
+!!! tip "Configuration alternatives"
+    Instead of hardcoding the key, you can set it via environment variable (`SCOUT_API_KEY`) or load it from your app's configuration:
+    ```csharp
+    var engine = new ScoutEngine(new ScoutOptions
+    {
+        ApiKey = Configuration["Scout:ApiKey"]
+    });
+    ```
 
 ## Multiple Documents
 
@@ -85,8 +93,8 @@ The `ReviewResult` contains:
 |----------|------|-------------|
 | `MarkdownReport` | `string` | Full review with readiness verdict, coverage matrix, blockers, and risk analysis |
 | `InstitutionConfigJson` | `string?` | Draft QC configuration JSON (if verdict is READY or READY WITH CLARIFICATIONS) |
-| `InputTokens` | `int?` | LLM input token count |
-| `OutputTokens` | `int?` | LLM output token count |
+| `InputTokens` | `int?` | Input token count |
+| `OutputTokens` | `int?` | Output token count |
 
 The markdown report includes:
 

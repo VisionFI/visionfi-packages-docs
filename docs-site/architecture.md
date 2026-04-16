@@ -9,20 +9,20 @@ Scout uses a layered containment architecture that separates your application, t
 │  Your Application (C# / .NET)                   │
 │  ├── VisionFI.Scout NuGet package               │
 │  │   └── ScoutEngine.ReviewPolicyAsync()        │
-│  │              ↓ P/Invoke                      │
-│  ├── Layer 2: Native Rust Wrapper (.dll/.dylib) │
-│  │   ├── Wasmtime runtime (embedded)            │
-│  │   ├── Host-imported functions                │
-│  │   ├── HTTP client (Anthropic API)            │
-│  │   └── Tokio async runtime                    │
-│  │              ↓ Wasm sandbox boundary          │
-│  ├── Layer 3: Wasm Guest Module (.wasm)         │
+│  │              ↓ native interop                 │
+│  ├── Layer 2: Native Engine (bundled runtime)    │
+│  │   ├── Sandboxed execution environment         │
+│  │   ├── Host-controlled external access         │
+│  │   ├── Authenticated LLM client               │
+│  │   └── Async I/O management                   │
+│  │              ↓ sandbox boundary               │
+│  ├── Layer 3: Sealed Analysis Module             │
 │  │   ├── Policy review logic                    │
 │  │   ├── Prompt construction                    │
 │  │   ├── Response parsing                       │
 │  │   └── Zero external capabilities             │
-│  │              ↓ host import call               │
-│  └── LLM Inference (Anthropic Claude API)       │
+│  │              ↓ host-mediated call             │
+│  └── LLM Inference (managed by VisionFI)        │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -30,80 +30,80 @@ Scout uses a layered containment architecture that separates your application, t
 
 - Clean .NET API: `ScoutEngine`, `PolicyDocument`, `ReviewResult`
 - Handles async wrapping, logging, DI integration
-- P/Invoke calls to the native library are internal implementation details
+- Native interop is an internal implementation detail
 
-### Layer 2: Rust Wrapper (Control Plane)
+### Layer 2: Native Engine (Control Plane)
 
-The native library (`.dll` on Windows, `.dylib` on macOS, `.so` on Linux) serves as the control plane. It is responsible for:
+The bundled native library serves as the control plane within your environment. It is responsible for:
 
-- Embedding and initializing the Wasmtime WebAssembly runtime
-- Loading the sealed Wasm module
-- Defining host-imported functions available to the Wasm guest
-- Mediating all external I/O (LLM API calls)
-- Managing async operations via Tokio for long-running LLM calls
-- Exposing a C-compatible FFI surface
+- Initializing and managing the sandboxed execution environment
+- Loading the sealed analysis module
+- Defining the controlled interface available to the sandboxed code
+- Mediating all external I/O (LLM inference calls)
+- Managing async operations for long-running LLM calls
+- Exposing a clean interop surface to the .NET layer
 
-### Layer 3: Wasm Guest Module (Sealed Logic)
+### Layer 3: Sealed Analysis Module (VisionFI Intelligence)
 
-VisionFI's proprietary logic, compiled from Rust to WebAssembly (`wasm32-wasip1`). This module:
+VisionFI's proprietary analysis logic runs inside a sandboxed execution environment. This module:
 
 - Runs fully sandboxed — **no filesystem, no network, no threads, no syscalls**
 - Contains all business logic: prompt construction, response parsing, workflow orchestration
-- Communicates with the outside world **exclusively** through host-imported functions
+- Communicates with the outside world **exclusively** through host-controlled functions
 - Cannot independently reach the network, access the filesystem, or exfiltrate data
 
-## Wasm Containment — What It Means
+## Sandbox Containment — What It Means
 
-The Wasm sandbox enforces containment at the **runtime level**, not by convention. By default, the guest module receives zero capabilities:
+The sandbox enforces containment at the **runtime level**, not by convention. By default, the analysis module receives zero capabilities:
 
-| Capability | Wasm Guest Access | Controlled By |
-|------------|-------------------|---------------|
-| Network / HTTP | **None** — cannot establish connections | Rust wrapper mediates all API calls |
-| Filesystem | **None** — no access to any files | Rust wrapper controls all I/O |
-| LLM Inference | Via host import only | Rust wrapper owns HTTP client and auth |
-| Environment Variables | **None** | Rust wrapper decides what to expose |
-| Memory | Own linear memory only | Wasmtime enforces boundaries |
-| Threads | **None** — single-threaded | Rust wrapper handles all concurrency |
+| Capability | Analysis Module Access | Controlled By |
+|------------|----------------------|---------------|
+| Network / HTTP | **None** — cannot establish connections | Native engine mediates all calls |
+| Filesystem | **None** — no access to any files | Native engine controls all I/O |
+| LLM Inference | Via host-controlled function only | Native engine owns the client and auth |
+| Environment Variables | **None** | Native engine decides what to expose |
+| Memory | Own isolated memory only | Sandbox runtime enforces boundaries |
+| Threads | **None** — single-threaded | Native engine handles all concurrency |
 
-This is **provable containment**. Your security team can verify that the module physically cannot exfiltrate data because the runtime does not expose the capability.
+This is **provable containment**. Your security team can verify that the analysis module physically cannot exfiltrate data because the runtime does not expose the capability.
 
-## LLM Call Flow
+## LLM Inference Flow
 
-Since the Wasm guest has no network access, all LLM inference is mediated by the host:
+Since the sealed module has no network access, all LLM inference is mediated by the host:
 
-1. Wasm guest constructs the prompt (combining your PDFs with the analysis framework)
-2. Guest calls `request_llm_inference` — a host-imported function
-3. Call crosses the sandbox boundary into the Rust wrapper
-4. Wrapper makes an async HTTPS call to the Anthropic API
-5. Wasm module is suspended (from its perspective, it's a synchronous call)
-6. Response returns; wrapper passes the result back into Wasm memory
-7. Guest parses the response and constructs the final output
+1. Analysis module constructs the prompt (combining your PDFs with the evaluation framework)
+2. Module requests inference through a host-controlled function
+3. Call crosses the sandbox boundary into the native engine
+4. Engine makes an authenticated HTTPS call to the LLM service
+5. Analysis module is suspended (from its perspective, it's a synchronous call)
+6. Response returns; engine passes the result back into the sandbox
+7. Module parses the response and constructs the final output
 
 ## Data Flow
 
 ```
 Your PDF bytes
-  → base64 encoded by C# SDK
-  → passed into Wasm guest memory
-  → guest constructs Anthropic API request body
-  → host import call crosses sandbox boundary
-  → Rust wrapper makes HTTPS call to Anthropic
+  → base64 encoded by the SDK
+  → passed into the sandboxed module's memory
+  → module constructs the inference request
+  → host-controlled function crosses sandbox boundary
+  → native engine makes authenticated HTTPS call to LLM
   → response flows back through same path
-  → guest parses response into ReviewResult
+  → module parses response into ReviewResult
   → result returned to your C# application
 ```
 
-**What leaves your machine:** Only the Anthropic API call (your PDF content + the analysis prompt, sent over HTTPS to Anthropic's API).
+**What leaves your machine:** Only the LLM inference call (your PDF content + the analysis prompt, sent over HTTPS to the AI provider managed by VisionFI).
 
 **What stays on your machine:** Everything else — the Scout engine, the analysis logic, the results.
 
 ## Platform Support
 
-The same Wasm module and Rust wrapper work across platforms. Only the outermost layer changes:
+The same sealed module works across platforms. Only the native engine binary changes per OS:
 
-| Platform | Native Library | NuGet RID |
-|----------|---------------|-----------|
-| Windows x64 | `scout_wrapper.dll` | `win-x64` |
-| macOS ARM | `libscout_wrapper.dylib` | `osx-arm64` |
-| macOS x64 | `libscout_wrapper.dylib` | `osx-x64` |
-| Linux x64 | `libscout_wrapper.so` | `linux-x64` |
+| Platform | Status |
+|----------|--------|
+| Windows x64 | Supported |
+| macOS ARM (Apple Silicon) | Supported |
+| macOS x64 | Supported |
+| Linux x64 | Supported |

@@ -11,18 +11,18 @@ Scout analyzes your institution's loan policy and checklist documents against Vi
 ```
 Your Application (.NET / C#)
   ↓ NuGet package
-Scout SDK (native binary — all processing happens locally)
-  ↓ sealed Wasm sandbox
-Policy Review Engine (VisionFI IP — you never see or touch it)
-  ↓ controlled API call
-LLM Inference (Anthropic Claude — only call that leaves your machine)
+Scout SDK (sealed native engine — all processing happens locally)
+  ↓ secure sandbox
+Policy Review Engine (VisionFI intelligence — sealed and tamper-proof)
+  ↓ controlled, authenticated API call
+LLM Inference (managed by VisionFI — you don't need your own AI account)
 ```
 
 1. You pass in PDF documents (loan policy, checklist)
 2. Scout's sealed engine analyzes them against 9 QC dimensions
 3. You get back a structured report with a readiness verdict and draft configuration
 
-**Your documents stay on your machine.** The only external call is to the Anthropic API for LLM inference — and that call is mediated and controlled by the Scout runtime.
+**Your documents stay on your machine.** The only external call is for AI inference — authenticated with credentials VisionFI provides, routed through a secure channel.
 
 ---
 
@@ -33,7 +33,7 @@ using VisionFI.Scout;
 
 var engine = new ScoutEngine(new ScoutOptions
 {
-    ApiKey = "your-anthropic-api-key"
+    ApiKey = "your-visionfi-scout-key"  // provided by VisionFI during onboarding
 });
 
 var doc = PolicyDocument.FromFile("consumer-loan-policy.pdf");
@@ -42,7 +42,7 @@ var result = await engine.ReviewPolicyAsync(doc);
 Console.WriteLine(result.MarkdownReport);
 ```
 
-That's it. No cloud setup, no VisionFI account, no data sharing agreements.
+That's it. No cloud setup, no AI vendor accounts, no data sharing agreements.
 
 [Get started in 5 minutes :material-arrow-right:](getting-started.md){ .md-button .md-button--primary }
 [View architecture :material-arrow-right:](architecture.md){ .md-button }

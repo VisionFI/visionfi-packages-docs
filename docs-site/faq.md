@@ -17,11 +17,7 @@ You can provide just the policy, but the review will flag the missing checklist 
 
 ### How long does a review take?
 
-Typically 2-4 minutes, depending on document size. The time is primarily spent on the LLM inference call. The SDK handles this asynchronously — your application thread is not blocked.
-
-### What LLM model is used?
-
-Scout uses Claude Opus 4.6 via the Anthropic Messages API for maximum accuracy on complex document analysis.
+Typically 2-4 minutes, depending on document size. The time is primarily spent on the AI inference call. The SDK handles this asynchronously — your application thread is not blocked.
 
 ---
 
@@ -33,15 +29,14 @@ No. The NuGet package includes the native runtime for your platform. There are n
 
 ### Where does the API key come from?
 
-The SDK looks for an Anthropic API key in this order:
+VisionFI provides your Scout API key during onboarding. The SDK looks for it in this order:
 
-1. `ScoutOptions.ApiKey` — set directly in code or configuration
-2. `ANTHROPIC_API_KEY` environment variable
-3. `~/.anthropic/api-key` file
+1. `ScoutOptions.ApiKey` — set directly in code or app configuration
+2. `SCOUT_API_KEY` environment variable
 
-### Can I use my organization's Anthropic enterprise account?
+### Do I need my own AI vendor account?
 
-Yes. You provide your own API key. Scout makes calls directly to the Anthropic API from your environment. Any enterprise agreements, rate limits, or data policies you've negotiated with Anthropic apply automatically.
+No. VisionFI manages the AI provider relationship, model selection, and authentication. Your Scout API key is the only credential you need.
 
 ---
 
@@ -49,15 +44,15 @@ Yes. You provide your own API key. Scout makes calls directly to the Anthropic A
 
 ### Does VisionFI see my documents?
 
-No. Scout runs entirely in your environment. Your documents are processed locally and sent directly to the Anthropic API by code running on your machine. VisionFI has no access to your data.
+No. Scout runs entirely in your environment. Your documents are processed locally and the only external call is for AI inference, made directly from your machine.
 
-### What is WebAssembly containment?
+### What is the sandbox?
 
-The core analysis logic runs inside a WebAssembly (Wasm) sandbox — a secure, isolated execution environment. The sandboxed code has no access to your filesystem, network, or any system resources. It can only communicate with the outside world through explicitly defined host functions that the Scout runtime controls.
+The core analysis logic runs inside a secure, isolated execution environment — a sandbox. The sandboxed code has no access to your filesystem, network, or any system resources. It can only communicate with the outside world through a controlled interface that the Scout runtime manages.
 
 ### Can I run this in an air-gapped environment?
 
-Not currently — the SDK requires network access to reach the Anthropic API for LLM inference. If you need fully air-gapped operation, contact VisionFI to discuss on-premise LLM deployment options.
+Not currently — the SDK requires network access for AI inference. If you need fully air-gapped operation, contact VisionFI to discuss on-premise deployment options.
 
 ---
 
@@ -87,7 +82,7 @@ var result = await engine.ReviewPolicyAsync(doc, cts.Token);
 
 ### Is the engine thread-safe?
 
-The `ScoutEngine` is registered as a singleton and is safe to use from multiple threads. Each call to `ReviewPolicyAsync` creates an isolated Wasm instance internally.
+The `ScoutEngine` is registered as a singleton and is safe to use from multiple threads. Each call to `ReviewPolicyAsync` creates an isolated execution context internally.
 
 ### What platforms are supported?
 
@@ -104,23 +99,23 @@ The `ScoutEngine` is registered as a singleton and is safe to use from multiple 
 
 ### "No API key configured"
 
-The SDK could not find an Anthropic API key. Either:
+The SDK could not find a Scout API key. Either:
 
 - Set `ScoutOptions.ApiKey` explicitly
-- Set the `ANTHROPIC_API_KEY` environment variable
-- Create a file at `~/.anthropic/api-key` containing your key
+- Set the `SCOUT_API_KEY` environment variable
+- Contact VisionFI if you haven't received your key
 
 ### "DllNotFoundException: scout_wrapper"
 
-The native library could not be found. Options:
+The native engine library could not be found. Options:
 
 - Ensure the NuGet package is properly installed (it includes the native binary)
 - Set `ScoutOptions.NativeLibraryPath` to the library location
-- On macOS/Linux, set `DYLD_LIBRARY_PATH` or `LD_LIBRARY_PATH` to include the directory
+- Verify your platform is supported (Windows x64, macOS ARM/x64, Linux x64)
 
 ### Review takes too long or times out
 
-Large PDF documents (10+ MB) combined with Claude's analysis can take several minutes. Use a `CancellationToken` with an appropriate timeout:
+Large PDF documents (10+ MB) can take several minutes to process. Use a `CancellationToken` with an appropriate timeout:
 
 ```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
