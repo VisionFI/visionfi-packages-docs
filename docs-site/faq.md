@@ -17,7 +17,7 @@ You can provide just the policy, but the review will flag the missing checklist 
 
 ### How long does a review take?
 
-Typically 2-4 minutes, depending on document size. The time is primarily spent on the AI inference call. The SDK handles this asynchronously — your application thread is not blocked.
+Typically 2-4 minutes, depending on document size. The time is primarily spent on the managed inference call. The SDK handles this asynchronously — your application thread is not blocked.
 
 ---
 
@@ -34,9 +34,9 @@ VisionFI provides your Scout API key during onboarding. The SDK looks for it in 
 1. `ScoutOptions.ApiKey` — set directly in code or app configuration
 2. `SCOUT_API_KEY` environment variable
 
-### Do I need my own AI vendor account?
+### Do I need to manage any third-party model credentials?
 
-No. VisionFI manages the AI provider relationship, model selection, and authentication. Your Scout API key is the only credential you need.
+No. VisionFI manages the inference-layer authentication and routing. Your Scout API key is the only credential you need.
 
 ---
 
@@ -44,7 +44,7 @@ No. VisionFI manages the AI provider relationship, model selection, and authenti
 
 ### Does VisionFI see my documents?
 
-No. Scout runs entirely in your environment. Your documents are processed locally and the only external call is for AI inference, made directly from your machine.
+No. Scout runs entirely in your environment. Your documents are processed locally and the only external call is for managed inference, made directly from your machine.
 
 ### What is the sandbox?
 
@@ -52,7 +52,7 @@ The core analysis logic runs inside a secure, isolated execution environment —
 
 ### Can I run this in an air-gapped environment?
 
-Not currently — the SDK requires network access for AI inference. If you need fully air-gapped operation, contact VisionFI to discuss on-premise deployment options.
+Not currently — the SDK requires network access for managed inference. If you need fully air-gapped operation, contact VisionFI to discuss on-premise deployment options.
 
 ---
 

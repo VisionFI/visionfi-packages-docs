@@ -13,7 +13,7 @@ Scout uses a layered containment architecture that separates your application, t
 │  ├── Layer 2: Native Engine (bundled runtime)    │
 │  │   ├── Sandboxed execution environment         │
 │  │   ├── Host-controlled external access         │
-│  │   ├── Authenticated LLM client               │
+│  │   ├── Authenticated outbound client          │
 │  │   └── Async I/O management                   │
 │  │              ↓ sandbox boundary               │
 │  ├── Layer 3: Sealed Analysis Module             │
@@ -22,7 +22,7 @@ Scout uses a layered containment architecture that separates your application, t
 │  │   ├── Response parsing                       │
 │  │   └── Zero external capabilities             │
 │  │              ↓ host-mediated call             │
-│  └── LLM Inference (managed by VisionFI)        │
+│  └── Managed Inference (operated by VisionFI)   │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -39,8 +39,8 @@ The bundled native library serves as the control plane within your environment. 
 - Initializing and managing the sandboxed execution environment
 - Loading the sealed analysis module
 - Defining the controlled interface available to the sandboxed code
-- Mediating all external I/O (LLM inference calls)
-- Managing async operations for long-running LLM calls
+- Mediating all external I/O (managed inference requests)
+- Managing async operations for long-running inference requests
 - Exposing a clean interop surface to the .NET layer
 
 ### Layer 3: Sealed Analysis Module (VisionFI Intelligence)
@@ -67,14 +67,14 @@ The sandbox enforces containment at the **runtime level**, not by convention. By
 
 This is **provable containment**. Your security team can verify that the analysis module physically cannot exfiltrate data because the runtime does not expose the capability.
 
-## LLM Inference Flow
+## Managed Inference Flow
 
-Since the sealed module has no network access, all LLM inference is mediated by the host:
+Since the sealed module has no network access, all managed inference is mediated by the host:
 
 1. Analysis module constructs the prompt (combining your PDFs with the evaluation framework)
 2. Module requests inference through a host-controlled function
 3. Call crosses the sandbox boundary into the native engine
-4. Engine makes an authenticated HTTPS call to the LLM service
+4. Engine makes an authenticated HTTPS call for managed inference
 5. Analysis module is suspended (from its perspective, it's a synchronous call)
 6. Response returns; engine passes the result back into the sandbox
 7. Module parses the response and constructs the final output
@@ -93,7 +93,7 @@ Your PDF bytes
   → result returned to your C# application
 ```
 
-**What leaves your machine:** Only the LLM inference call (your PDF content + the analysis prompt, sent over HTTPS to the AI provider managed by VisionFI).
+**What leaves your machine:** Only the managed inference request (your PDF content + the analysis prompt, sent over HTTPS through a VisionFI-managed channel).
 
 **What stays on your machine:** Everything else — the Scout engine, the analysis logic, the results.
 
