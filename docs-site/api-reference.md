@@ -1,197 +1,147 @@
 # API Reference
 
-## ScoutEngine
+This page documents the proposed public surface for the new Scout Authoring SDK.
 
-The main entry point for policy reviews. Implements `IScoutEngine` and `IDisposable`.
+## ScoutAuthoringClient
 
-### Constructors
+Main entry point for rule-bundle authoring.
 
 ```csharp
-// Direct construction
-var engine = new ScoutEngine(new ScoutOptions
+var client = new ScoutAuthoringClient(new ScoutAuthoringOptions
 {
-    ApiKey = "your-visionfi-scout-key"
+    HqBaseUrl = "https://scout-hq.example.com",
+    ScoutToken = "<fi-token>"
 });
-
-// With logging
-var engine = new ScoutEngine(options, logger);
-
-// Via dependency injection (resolved automatically)
-public class MyService(IScoutEngine engine) { }
 ```
 
-### Methods
-
-#### `ReviewPolicyAsync`
+### `AuthorRuleBundleAsync`
 
 ```csharp
-Task<ReviewResult> ReviewPolicyAsync(
-    IEnumerable<PolicyDocument> documents,
-    CancellationToken cancellationToken = default);
-
-Task<ReviewResult> ReviewPolicyAsync(
-    PolicyDocument document,
+Task<AuthorRuleBundleResult> AuthorRuleBundleAsync(
+    AuthorRuleBundleRequest request,
     CancellationToken cancellationToken = default);
 ```
 
-Reviews one or more policy/checklist PDF documents. The operation runs asynchronously — the calling thread is not blocked.
+Authors a staged CEL rule bundle from PDF and text source material.
 
-**Throws:**
-
-- `ScoutException` — if the review engine encounters an error
-- `OperationCanceledException` — if the cancellation token is triggered
-- `ArgumentException` — if no documents are provided
-
-**Example:**
-
-```csharp
-try
-{
-    var result = await engine.ReviewPolicyAsync(doc);
-    Console.WriteLine(result.MarkdownReport);
-}
-catch (ScoutException ex)
-{
-    Console.Error.WriteLine($"Review failed: {ex.Message}");
-}
-```
-
----
-
-## ScoutOptions
-
-Configuration for the Scout engine.
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ApiKey` | `string?` | `null` | Scout API key provided by VisionFI. If null, resolved from `SCOUT_API_KEY` environment variable. |
-| `NativeLibraryPath` | `string?` | `null` | Path to the native Scout engine library. If null, uses the bundled runtime from the NuGet package. |
-
----
-
-## PolicyDocument
-
-Represents a PDF document to review.
-
-### Static Factory Methods
-
-```csharp
-// From a file path
-var doc = PolicyDocument.FromFile("/path/to/policy.pdf");
-
-// From a stream (e.g. uploaded file in ASP.NET)
-var doc = await PolicyDocument.FromStreamAsync(stream, "policy.pdf", cancellationToken);
-```
-
-### Properties
+## ScoutAuthoringOptions
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `FileName` | `string` | Display name for the document |
-| `Content` | `ReadOnlyMemory<byte>` | Raw PDF bytes |
+| `HqBaseUrl` | `string` | Scout HQ base URL |
+| `ScoutToken` | `string` | FI token issued by Scout HQ |
+| `HttpClient` | `HttpClient?` | Optional caller-provided HTTP client |
 
-### Manual Construction
+The token is sent to Scout HQ as:
 
-```csharp
-var doc = new PolicyDocument
-{
-    FileName = "policy.pdf",
-    Content = pdfBytes,
-};
+```http
+X-Scout-Token: <fi-token>
 ```
 
----
-
-## ReviewResult
-
-The result of a policy review.
+## AuthorRuleBundleRequest
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `MarkdownReport` | `string` | Full markdown review report |
-| `InstitutionConfigJson` | `string?` | Draft config JSON, if verdict is READY or READY WITH CLARIFICATIONS |
-| `InputTokens` | `int?` | Input tokens consumed |
-| `OutputTokens` | `int?` | Output tokens generated |
-| `Error` | `string?` | Error message (null on success) |
+| `ProfileKey` | `string` | Authoring profile key, for example `consumer-qc.consumer-loan-qc.policy-cel-authoring` |
+| `Version` | `string` | Bundle version, conventionally `YYYY.MM.DD.N` |
+| `Sources` | `IReadOnlyList<AuthoringSource>` | PDFs and free-form text used for authoring |
 
----
+The SDK enforces that wrapper `version` and nested `bundle_json.version` match this value.
 
-## ScoutException
+## AuthoringSource
 
-Thrown when a Scout operation fails. Extends `System.Exception`.
+Represents source material supplied by the partner application.
 
 ```csharp
-try
-{
-    var result = await engine.ReviewPolicyAsync(doc);
-}
-catch (ScoutException ex)
-{
-    // ex.Message contains the error detail
-    logger.LogError(ex, "Policy review failed");
-}
+var pdf = AuthoringSource.FromPdf("consumer-loan-policy.pdf");
+var text = AuthoringSource.FromText("checklist.txt", checklistText);
 ```
 
----
+| Property | Description |
+|----------|-------------|
+| `FileName` | Display/source name |
+| `MediaType` | `application/pdf` or `text/plain` |
+| `Content` | Raw source bytes or text |
 
-## IScoutEngine
+## AuthorRuleBundleResult
 
-Interface for the Scout engine. Use this for dependency injection and testing.
+| Property | Description |
+|----------|-------------|
+| `EvidenceReportMarkdown` | Source-grounded evidence report |
+| `RuleBundleWrapperJson` | Serialized CRM-compatible wrapper |
+| `RuleBundleWrapper` | Typed wrapper object, if the SDK exposes one |
+| `Validation` | CEL compile and field-path validation status |
+| `ProfileKey` | Profile used |
+| `ProfileVersion` | Profile version used |
+| `InputTokens` / `OutputTokens` | Provider token usage, when available |
 
-```csharp
-public interface IScoutEngine : IDisposable
-{
-    Task<ReviewResult> ReviewPolicyAsync(
-        IEnumerable<PolicyDocument> documents,
-        CancellationToken cancellationToken = default);
-
-    Task<ReviewResult> ReviewPolicyAsync(
-        PolicyDocument document,
-        CancellationToken cancellationToken = default);
-}
-```
-
----
-
-## Dependency Injection
-
-### Registration
+## RuleBundleWrapper
 
 ```csharp
-// With configuration
-builder.Services.AddScout(options =>
+public sealed class RuleBundleWrapper
 {
-    options.ApiKey = builder.Configuration["Scout:ApiKey"];
-});
-
-// With default options (API key from SCOUT_API_KEY environment variable)
-builder.Services.AddScout();
-```
-
-### Usage
-
-```csharp
-public class PolicyReviewController(IScoutEngine scout) : ControllerBase
-{
-    [HttpPost("review")]
-    public async Task<IActionResult> Review(IFormFile file, CancellationToken ct)
-    {
-        await using var stream = file.OpenReadStream();
-        var doc = await PolicyDocument.FromStreamAsync(stream, file.FileName, ct);
-        var result = await scout.ReviewPolicyAsync(doc, ct);
-        return Ok(result);
-    }
+    public string ProductKey { get; init; }
+    public string WorkflowKey { get; init; }
+    public string Version { get; init; }
+    public JsonElement BundleJson { get; init; }
+    public bool Active { get; init; }
 }
 ```
 
-### appsettings.json
+Serialized JSON uses the CRM/HQ field names:
 
 ```json
 {
-  "Scout": {
-    "ApiKey": "your-visionfi-scout-key"
-  }
+  "product_key": "consumer-qc",
+  "workflow_key": "consumer-loan-qc",
+  "version": "2026.06.03.1",
+  "bundle_json": {
+    "institution_id": "fi-123",
+    "version": "2026.06.03.1",
+    "product_id": "consumer-loan-qc",
+    "rules": [],
+    "derivations": [],
+    "tables": {}
+  },
+  "active": false
 }
 ```
 
-The engine is registered as a **singleton** — it's safe to share across requests.
+## Scout HQ Endpoint
+
+The SDK retrieves the authoring profile through Scout HQ:
+
+```http
+GET /authoring-profiles/{profileKey}
+X-Scout-Token: <fi-token>
+```
+
+Response shape:
+
+```json
+{
+  "institution": {
+    "id": "fi-123",
+    "name": "Example Bank"
+  },
+  "providers": {
+    "anthropic": {
+      "apiKey": "..."
+    }
+  },
+  "profile": {
+    "profileKey": "consumer-qc.consumer-loan-qc.policy-cel-authoring",
+    "productKey": "consumer-qc",
+    "workflowKey": "consumer-loan-qc",
+    "bundleProductId": "consumer-loan-qc",
+    "model": "claude-sonnet-4-6",
+    "maxTokens": 16384,
+    "systemPrompt": "...",
+    "fieldDictionary": {},
+    "referenceBundle": {},
+    "oracleFixture": {},
+    "validationPolicy": {},
+    "version": "2026.06.03.1"
+  }
+}
+```

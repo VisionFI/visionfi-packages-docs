@@ -1,5 +1,5 @@
-site_name: VisionFI Scout SDK
-site_description: Loan policy review — runs in your environment, under your control
+site_name: VisionFI Scout Authoring SDK
+site_description: Detached CEL rule-bundle authoring for Scout workflows
 site_url: https://visionfi.github.io/visionfi-packages-docs
 
 repo_name: VisionFI/visionfi-packages-docs
@@ -10,15 +10,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: deep orange
+      accent: deep orange
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: deep orange
+      accent: deep orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode

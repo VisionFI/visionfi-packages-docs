@@ -1,59 +1,69 @@
 # Security & Data Sovereignty
 
-## The Core Guarantee
+## Core Boundary
 
-**Your data never touches VisionFI infrastructure.**
+Scout HQ does not receive policy PDFs, checklist documents, free-form policy text, or generated rule-bundle results in the detached authoring flow.
 
-Scout runs entirely within your environment. There is no VisionFI cloud service, no VisionFI API endpoint, no data pipeline back to VisionFI. The only external call is for managed inference — made from your machine, authenticated with credentials VisionFI provides and manages on your behalf.
+Scout HQ receives only the FI token and returns:
 
-## What This Means for Your Organization
+- institution identity
+- authoring profile
+- provider credentials configured for that FI token
 
-### No Data Processor Liability
+## What Leaves The Partner Environment
 
-VisionFI never acts as a data processor for your member/customer data. The loan policy documents you analyze are read by the Scout SDK running on your hardware. The managed inference request goes directly from your environment through the Scout runtime.
+| Destination | Data Sent |
+|-------------|-----------|
+| Scout HQ | FI token only |
+| Managed inference provider | Policy PDFs/text and authoring prompt |
+| VisionFI CRM | Nothing |
 
-### Simplified Vendor Due Diligence
+The partner application remains responsible for storage, approval, audit records, and later Scout HQ integration of the generated bundle.
 
-Traditional technology risk assessments ask: Where is my data stored? Who has access? What are the retention policies? With Scout, the answer to all of these is: **your existing policies apply, because the data never leaves your security perimeter** except for the managed inference request that your team can observe on the network.
+## FI Token
 
-### No BAA / DPA Scope Expansion
+The FI token authenticates the institution. The SDK uses it to retrieve:
 
-Because VisionFI never sees, stores, or processes your data, there is no need to expand Business Associate Agreements or Data Processing Agreements to cover VisionFI for this data flow.
+- `institution.id`
+- `institution.name`
+- authoring profile content
+- provider credentials
 
-## Managed Inference
+For the initial version, any valid FI token can retrieve an active authoring profile. Product entitlement checks can be added later without changing the SDK output contract.
 
-The one external call Scout makes is for managed inference. Here's what you should know:
+## Provider Credentials
 
-- **What's sent:** Your PDF document content + the analysis prompt, over HTTPS
-- **Authentication:** Managed by VisionFI through the credentials issued for Scout
-- **Data handling:** Managed inference is configured for production document review workflows
-- **You can audit it:** The request is made from your machine — your network monitoring tools see it
+The FI token can return provider credentials, including an Anthropic API key. The SDK uses those credentials to call managed inference directly from the partner environment.
 
-!!! info "VisionFI Manages Inference Access"
-    VisionFI handles the inference-layer authentication and routing for Scout. Clients do not need to provision, configure, or manage third-party model credentials.
+Partners should treat provider credentials as sensitive operational secrets:
 
-## IP Protection
+- do not log them
+- do not persist them outside approved secret storage
+- do not include them in support bundles or telemetry
 
-VisionFI's analysis logic (the evaluation framework, prompt engineering, and response parsing) is compiled into a sealed binary that runs inside a sandboxed runtime. The analysis methodology cannot be extracted, modified, or reverse-engineered from the distributed package.
+## Document Handling
 
-## Containment Verification
+The SDK should process source files in memory where practical. If the partner application persists documents or generated bundles, that storage is governed by the partner's own controls.
 
-The containment model is verifiable by your security team:
+## Generated Bundle Status
 
-1. **The analysis module has no network access** — it runs in a sandbox with zero network capabilities
-2. **The analysis module has no filesystem access** — the sandbox has no access to your disk
-3. **All external calls go through host-controlled functions** — the only bridge to the outside world is the inference function, which the native engine controls
-4. **Memory isolation is enforced** — the analysis module cannot read or write memory outside its own isolated address space
+Generated bundles are staged output. The SDK returns:
 
-## Summary
+```json
+"active": false
+```
 
-| Concern | Status |
-|---------|--------|
-| Does VisionFI see my data? | **No** — Scout runs in your environment |
-| Does VisionFI host anything? | **No** — no cloud service, no API endpoint |
-| Do I need to manage third-party model credentials? | **No** — VisionFI manages inference access |
-| Where does my data go? | **Managed inference request only** — from your machine |
-| Can VisionFI access my results? | **No** — results stay in your application's memory |
-| Can the analysis logic be extracted? | **No** — sealed in a sandboxed binary |
-| Can I audit the network calls? | **Yes** — standard HTTPS from your machine |
-| Do I need a DPA with VisionFI for data? | **No** — VisionFI never processes your data |
+That prevents authoring from being confused with approval. Promotion or activation remains a separate governance step.
+
+## Audit Considerations
+
+Partners should record:
+
+- authoring profile key and version
+- bundle version
+- source document names
+- timestamp
+- validation result
+- user or service principal that requested authoring
+
+Do not log source document content, provider credentials, FI tokens, or PII.

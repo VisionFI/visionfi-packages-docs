@@ -1,109 +1,109 @@
 # Architecture
 
-## Three-Layer Containment Model
+## Detached Authoring Model
 
-Scout uses a layered containment architecture that separates your application, the execution runtime, and VisionFI's core logic into distinct security boundaries.
+The Scout Authoring SDK is designed for partners who need to create rule bundles without using VisionFI CRM.
 
-```
-┌─────────────────────────────────────────────────┐
-│  Your Application (C# / .NET)                   │
-│  ├── VisionFI.Scout NuGet package               │
-│  │   └── ScoutEngine.ReviewPolicyAsync()        │
-│  │              ↓ native interop                 │
-│  ├── Layer 2: Native Engine (bundled runtime)    │
-│  │   ├── Sandboxed execution environment         │
-│  │   ├── Host-controlled external access         │
-│  │   ├── Authenticated outbound client          │
-│  │   └── Async I/O management                   │
-│  │              ↓ sandbox boundary               │
-│  ├── Layer 3: Sealed Analysis Module             │
-│  │   ├── Policy review logic                    │
-│  │   ├── Prompt construction                    │
-│  │   ├── Response parsing                       │
-│  │   └── Zero external capabilities             │
-│  │              ↓ host-mediated call             │
-│  └── Managed Inference (operated by VisionFI)   │
-└─────────────────────────────────────────────────┘
+```text
+Partner Application
+  -> Scout Authoring SDK
+      -> Scout HQ
+          - FI token validation
+          - institution identity
+          - authoring profile
+          - provider credentials
+      -> Managed inference
+          - policy PDFs/text
+          - profile prompt and schema artifacts
+      -> Local validation
+      -> CRM-compatible rule-bundle wrapper
 ```
 
-### Layer 1: C# NuGet Package (Your Interface)
+Scout HQ is the control plane for identity and authoring configuration. It is not the document processor in this flow.
 
-- Clean .NET API: `ScoutEngine`, `PolicyDocument`, `ReviewResult`
-- Handles async wrapping, logging, DI integration
-- Native interop is an internal implementation detail
+## Scout HQ Responsibilities
 
-### Layer 2: Native Engine (Control Plane)
+Scout HQ provides:
 
-The bundled native library serves as the control plane within your environment. It is responsible for:
+- FI token validation
+- Institution ID and institution name
+- Product/workflow-specific authoring profiles
+- Provider credentials associated with the FI token
+- Versioned schema artifacts used by the SDK
 
-- Initializing and managing the sandboxed execution environment
-- Loading the sealed analysis module
-- Defining the controlled interface available to the sandboxed code
-- Mediating all external I/O (managed inference requests)
-- Managing async operations for long-running inference requests
-- Exposing a clean interop surface to the .NET layer
+The same FI token used by Scout runtime flows can retrieve authoring profiles. For the initial partner flow, no product entitlement check is required; a valid token is sufficient.
 
-### Layer 3: Sealed Analysis Module (VisionFI Intelligence)
+## SDK Responsibilities
 
-VisionFI's proprietary analysis logic runs inside a sandboxed execution environment. This module:
+The SDK handles:
 
-- Runs fully sandboxed — **no filesystem, no network, no threads, no syscalls**
-- Contains all business logic: prompt construction, response parsing, workflow orchestration
-- Communicates with the outside world **exclusively** through host-controlled functions
-- Cannot independently reach the network, access the filesystem, or exfiltrate data
+- PDF and text source preparation
+- Authoring request construction
+- Managed inference calls from the partner environment
+- Evidence report parsing
+- Rule-bundle wrapper shaping
+- CEL bundle validation
+- Version consistency checks
 
-## Sandbox Containment — What It Means
+The SDK uses the token-resolved `institution.id` from Scout HQ. The caller does not supply the institution ID.
 
-The sandbox enforces containment at the **runtime level**, not by convention. By default, the analysis module receives zero capabilities:
+## Authoring Profile Boundary
 
-| Capability | Analysis Module Access | Controlled By |
-|------------|----------------------|---------------|
-| Network / HTTP | **None** — cannot establish connections | Native engine mediates all calls |
-| Filesystem | **None** — no access to any files | Native engine controls all I/O |
-| LLM Inference | Via host-controlled function only | Native engine owns the client and auth |
-| Environment Variables | **None** | Native engine decides what to expose |
-| Memory | Own isolated memory only | Sandbox runtime enforces boundaries |
-| Threads | **None** — single-threaded | Native engine handles all concurrency |
+Authoring profiles are distinct from Scout Chat agents and Scout runtime workflows.
 
-This is **provable containment**. Your security team can verify that the analysis module physically cannot exfiltrate data because the runtime does not expose the capability.
+| HQ object | Purpose |
+|-----------|---------|
+| `agents` | Scout Chat directives |
+| `workflows` | Scout runtime workflow configuration |
+| `rule_bundles` | Institution-specific executable CEL bundles |
+| `authoring_profiles` | Instructions and schema artifacts for creating CEL bundles |
 
-## Managed Inference Flow
-
-Since the sealed module has no network access, all managed inference is mediated by the host:
-
-1. Analysis module constructs the prompt (combining your PDFs with the evaluation framework)
-2. Module requests inference through a host-controlled function
-3. Call crosses the sandbox boundary into the native engine
-4. Engine makes an authenticated HTTPS call for managed inference
-5. Analysis module is suspended (from its perspective, it's a synchronous call)
-6. Response returns; engine passes the result back into the sandbox
-7. Module parses the response and constructs the final output
+This keeps the authoring package from changing Scout Chat behavior or Scout runtime execution.
 
 ## Data Flow
 
-```
-Your PDF bytes
-  → base64 encoded by the SDK
-  → passed into the sandboxed module's memory
-  → module constructs the inference request
-  → host-controlled function crosses sandbox boundary
-  → native engine makes authenticated HTTPS call to LLM
-  → response flows back through same path
-  → module parses response into ReviewResult
-  → result returned to your C# application
+```text
+FI token
+  -> Scout HQ
+  -> institution identity + authoring profile + provider credentials
+
+Policy PDFs / free-form text
+  -> SDK
+  -> managed inference provider
+  -> SDK
+  -> partner-owned storage
 ```
 
-**What leaves your machine:** Only the managed inference request (your PDF content + the analysis prompt, sent over HTTPS through a VisionFI-managed channel).
+## Output Contract
 
-**What stays on your machine:** Everything else — the Scout engine, the analysis logic, the results.
+The SDK returns the CRM-compatible wrapper:
+
+```json
+{
+  "product_key": "consumer-qc",
+  "workflow_key": "consumer-loan-qc",
+  "version": "2026.06.03.1",
+  "bundle_json": {
+    "institution_id": "fi-123",
+    "version": "2026.06.03.1",
+    "product_id": "consumer-loan-qc",
+    "rules": [],
+    "derivations": [],
+    "tables": {}
+  },
+  "active": false
+}
+```
+
+`active` remains `false` because promotion is a separate governance action.
 
 ## Platform Support
 
-The same sealed module works across platforms. Only the native engine binary changes per OS:
+The target package shape supports partner-hosted .NET applications on:
 
 | Platform | Status |
 |----------|--------|
-| Windows x64 | Supported |
-| macOS ARM (Apple Silicon) | Supported |
-| macOS x64 | Supported |
-| Linux x64 | Supported |
+| Windows x64 | Planned |
+| macOS ARM | Planned |
+| macOS x64 | Planned |
+| Linux x64 | Planned |

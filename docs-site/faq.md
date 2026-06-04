@@ -2,122 +2,90 @@
 
 ## General
 
-### What does Scout do?
+### What does the Scout Authoring SDK do?
 
-Scout analyzes your institution's loan policy and checklist documents against VisionFI's consumer-loan QC workflow requirements. It produces a structured readiness assessment that identifies what's covered, what's missing, and generates a draft `InstitutionConfig` JSON that can be used to configure automated QC.
+It creates staged CEL rule bundles from policy documents and free-form policy text. The output is compatible with the rule-bundle wrapper shape used by VisionFI CRM and Scout HQ.
 
-### What documents should I provide?
+### Is this the old policy readiness review package?
 
-For the best results, provide both:
+No. The old readiness-review package produced a markdown review and draft `InstitutionConfig`. This new package produces an evidence report and a staged CEL rule-bundle wrapper.
 
-1. **Loan Policy** — the board-approved document governing consumer lending parameters
-2. **Loan Checklist** — the operational document used to verify required items in the loan file
+### Does the partner need VisionFI CRM?
 
-You can provide just the policy, but the review will flag the missing checklist as a gap.
+No. The partner application owns document collection, bundle storage, review, and later Scout HQ integration.
 
-### How long does a review take?
+### What is an authoring profile?
 
-Typically 2-4 minutes, depending on document size. The time is primarily spent on the managed inference call. The SDK handles this asynchronously — your application thread is not blocked.
+An authoring profile is a Scout HQ record for a specific product/workflow pair. It contains the authoring prompt, model settings, field dictionary, reference bundle, oracle fixture, and validation policy.
 
----
+Example:
 
-## Installation & Setup
+```text
+consumer-qc.consumer-loan-qc.policy-cel-authoring
+```
 
-### Do I need to install anything besides the NuGet package?
+## Tokens And Access
 
-No. The NuGet package includes the native runtime for your platform. There are no separate installers, Docker containers, or services to run.
+### Can the SDK use the FI token?
 
-### Where does the API key come from?
+Yes. The SDK uses the FI token in the `X-Scout-Token` header to retrieve the authoring profile and provider credentials from Scout HQ.
 
-VisionFI provides your Scout API key during onboarding. The SDK looks for it in this order:
+### Are product entitlements required?
 
-1. `ScoutOptions.ApiKey` — set directly in code or app configuration
-2. `SCOUT_API_KEY` environment variable
+Not in the initial version. Any valid FI token can retrieve an active authoring profile.
 
-### Do I need to manage any third-party model credentials?
+### Does Scout HQ receive the policy documents?
 
-No. VisionFI manages the inference-layer authentication and routing. Your Scout API key is the only credential you need.
+No. Scout HQ receives the FI token and returns configuration. Policy documents and free-form text go directly from the partner environment to managed inference.
 
----
+## Output
 
-## Security
+### What does the SDK return?
 
-### Does VisionFI see my documents?
+The SDK returns:
 
-No. Scout runs entirely in your environment. Your documents are processed locally and the only external call is for managed inference, made directly from your machine.
+- evidence report markdown
+- staged rule-bundle wrapper JSON
+- validation results
+- authoring profile metadata
+- token usage, when available
 
-### What is the sandbox?
+### Why is `active` false?
 
-The core analysis logic runs inside a secure, isolated execution environment — a sandbox. The sandboxed code has no access to your filesystem, network, or any system resources. It can only communicate with the outside world through a controlled interface that the Scout runtime manages.
+Generated bundles are authoring output, not approved runtime configuration. The partner decides when a bundle is approved and later integrated with Scout HQ.
 
-### Can I run this in an air-gapped environment?
+### Who stores the bundle?
 
-Not currently — the SDK requires network access for managed inference. If you need fully air-gapped operation, contact VisionFI to discuss on-premise deployment options.
-
----
+The partner stores it. Scout HQ integration comes later.
 
 ## Integration
 
-### Can I use this in an ASP.NET application?
+### Can the SDK accept free-form text?
 
-Yes. Register the engine with dependency injection:
+Yes. The source list can include PDFs and text inputs.
 
-```csharp
-builder.Services.AddScout(options =>
-{
-    options.ApiKey = builder.Configuration["Scout:ApiKey"];
-});
-```
+### Can it run in ASP.NET?
 
-Then inject `IScoutEngine` into your controllers or services.
+Yes. The client can be registered with dependency injection and called from controllers, background jobs, or internal workflow services.
 
-### Can I cancel a long-running review?
+### What platforms are targeted?
 
-Yes. Pass a `CancellationToken`:
-
-```csharp
-using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-var result = await engine.ReviewPolicyAsync(doc, cts.Token);
-```
-
-### Is the engine thread-safe?
-
-The `ScoutEngine` is registered as a singleton and is safe to use from multiple threads. Each call to `ReviewPolicyAsync` creates an isolated execution context internally.
-
-### What platforms are supported?
-
-| Platform | Status |
-|----------|--------|
-| Windows x64 | Supported |
-| macOS ARM (Apple Silicon) | Supported |
-| macOS x64 | Supported |
-| Linux x64 | Supported |
-
----
+Windows, macOS, and Linux on-device support are assumed for the package direction.
 
 ## Troubleshooting
 
-### "No API key configured"
+### The authoring profile returns 404
 
-The SDK could not find a Scout API key. Either:
+Confirm the profile key is correct and that the profile is active in Scout HQ seed/config data.
 
-- Set `ScoutOptions.ApiKey` explicitly
-- Set the `SCOUT_API_KEY` environment variable
-- Contact VisionFI if you haven't received your key
+### The request is unauthorized
 
-### "DllNotFoundException: scout_wrapper"
+Confirm the FI token is active and sent as:
 
-The native engine library could not be found. Options:
-
-- Ensure the NuGet package is properly installed (it includes the native binary)
-- Set `ScoutOptions.NativeLibraryPath` to the library location
-- Verify your platform is supported (Windows x64, macOS ARM/x64, Linux x64)
-
-### Review takes too long or times out
-
-Large PDF documents (10+ MB) can take several minutes to process. Use a `CancellationToken` with an appropriate timeout:
-
-```csharp
-using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
-var result = await engine.ReviewPolicyAsync(doc, cts.Token);
+```http
+X-Scout-Token: <fi-token>
 ```
+
+### The bundle fails validation
+
+The evidence report should explain blockers or ambiguous policy language. CEL validation errors usually mean the generated expression does not compile or references a field path outside the profile's field dictionary.
