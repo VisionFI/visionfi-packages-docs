@@ -1,5 +1,5 @@
-site_name: VisionFI Scout Authoring SDK
-site_description: Detached CEL rule-bundle authoring for Scout workflows
+site_name: VisionFI Policy Analyzer
+site_description: Policy Analyzer for detached Scout CEL rule-bundle authoring
 site_url: https://visionfi.github.io/visionfi-packages-docs
 
 repo_name: VisionFI/visionfi-packages-docs

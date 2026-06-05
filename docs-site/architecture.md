@@ -2,11 +2,11 @@
 
 ## Detached Authoring Model
 
-The Scout Authoring SDK is designed for partners who need to create rule bundles without using VisionFI CRM.
+VisionFI Policy Analyzer is designed for partners who need to create rule bundles without using VisionFI CRM.
 
 ```text
 Partner Application
-  -> Scout Authoring SDK
+  -> VisionFI Policy Analyzer
       -> Scout HQ
           - FI token validation
           - institution identity
@@ -58,7 +58,7 @@ Authoring profiles are distinct from Scout Chat agents and Scout runtime workflo
 | `rule_bundles` | Institution-specific executable CEL bundles |
 | `authoring_profiles` | Instructions and schema artifacts for creating CEL bundles |
 
-This keeps the authoring package from changing Scout Chat behavior or Scout runtime execution.
+This keeps Policy Analyzer from changing Scout Chat behavior or Scout runtime execution.
 
 ## Data Flow
 
@@ -97,13 +97,15 @@ The SDK returns the CRM-compatible wrapper:
 
 `active` remains `false` because promotion is a separate governance action.
 
-## Platform Support
+## Package And Platform Support
 
-The target package shape supports partner-hosted .NET applications on:
+The `VisionFI.PolicyAnalyzer.0.1.0.nupkg` package includes runtime assets for:
 
 | Platform | Status |
 |----------|--------|
-| Windows x64 | Planned |
-| macOS ARM | Planned |
-| macOS x64 | Planned |
-| Linux x64 | Planned |
+| Windows x64 | Supported in `0.1.0` |
+| macOS ARM64 | Supported in `0.1.0` |
+| Linux x64 | Supported in `0.1.0` |
+| Windows ARM64 | Not included in `0.1.0` |
+| macOS x64 | Not included in `0.1.0` |
+| Linux ARM64 | Not included in `0.1.0` |

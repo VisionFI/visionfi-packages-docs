@@ -1,6 +1,8 @@
 # API Reference
 
-This page documents the proposed public surface for the new Scout Authoring SDK.
+This page documents the public surface for VisionFI Policy Analyzer.
+
+The NuGet package ID is `VisionFI.PolicyAnalyzer`. The current public C# namespace is `VisionFI.Scout.Authoring`.
 
 ## ScoutAuthoringClient
 
@@ -69,7 +71,7 @@ var text = AuthoringSource.FromText("checklist.txt", checklistText);
 |----------|-------------|
 | `EvidenceReportMarkdown` | Source-grounded evidence report |
 | `RuleBundleWrapperJson` | Serialized CRM-compatible wrapper |
-| `RuleBundleWrapper` | Typed wrapper object, if the SDK exposes one |
+| `RuleBundleWrapper` | Typed wrapper object |
 | `Validation` | CEL compile and field-path validation status |
 | `ProfileKey` | Profile used |
 | `ProfileVersion` | Profile version used |

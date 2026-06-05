@@ -2,7 +2,7 @@
 
 ## General
 
-### What does the Scout Authoring SDK do?
+### What does VisionFI Policy Analyzer do?
 
 It creates staged CEL rule bundles from policy documents and free-form policy text. The output is compatible with the rule-bundle wrapper shape used by VisionFI CRM and Scout HQ.
 
@@ -59,6 +59,26 @@ Generated bundles are authoring output, not approved runtime configuration. The 
 The partner stores it. Scout HQ integration comes later.
 
 ## Integration
+
+### What is the NuGet package ID?
+
+The package ID is:
+
+```text
+VisionFI.PolicyAnalyzer
+```
+
+The package file for version `0.1.0` is:
+
+```text
+VisionFI.PolicyAnalyzer.0.1.0.nupkg
+```
+
+The current public C# namespace remains:
+
+```csharp
+using VisionFI.Scout.Authoring;
+```
 
 ### Can the SDK accept free-form text?
 

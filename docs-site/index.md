@@ -1,8 +1,8 @@
-# VisionFI Scout Authoring SDK
+# VisionFI Policy Analyzer
 
 **Create Scout CEL rule bundles from policy documents inside the partner environment.**
 
-The Scout Authoring SDK is a .NET package for partners who do not work inside VisionFI CRM. A partner application sends consumer-lending policy PDFs or free-form policy text into the SDK, receives an evidence report and a staged CEL rule-bundle payload, and stores that payload for later Scout HQ integration.
+VisionFI Policy Analyzer is a .NET package for partners who do not work inside VisionFI CRM. A partner application sends consumer-lending policy PDFs or free-form policy text into the SDK, receives an evidence report and a staged CEL rule-bundle payload, and stores that payload for later Scout HQ integration.
 
 Scout HQ provides the FI identity, authoring profile, schema artifacts, and provider credentials. Policy documents and policy text are not sent to Scout HQ.
 
@@ -35,7 +35,7 @@ The payload is staged output. A partner-owned approval and storage workflow deci
 
 ```text
 Partner .NET Application
-  -> VisionFI Scout Authoring SDK
+  -> VisionFI Policy Analyzer
   -> Scout HQ using FI token
        - validates token
        - returns institution identity

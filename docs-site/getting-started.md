@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide shows the proposed partner-facing flow for the Scout Authoring SDK.
+This guide shows the partner-facing flow for VisionFI Policy Analyzer.
 
 ## Prerequisites
 
@@ -11,17 +11,44 @@ This guide shows the proposed partner-facing flow for the Scout Authoring SDK.
 
 ## Installation
 
+Package ID:
+
+```text
+VisionFI.PolicyAnalyzer
+```
+
+Current package file:
+
+```text
+VisionFI.PolicyAnalyzer.0.1.0.nupkg
+```
+
 === "NuGet CLI"
 
     ```bash
-    dotnet add package VisionFI.Scout.Authoring
+    dotnet add package VisionFI.PolicyAnalyzer --version 0.1.0
     ```
 
 === "PackageReference"
 
     ```xml
-    <PackageReference Include="VisionFI.Scout.Authoring" Version="0.1.0" />
+    <PackageReference Include="VisionFI.PolicyAnalyzer" Version="0.1.0" />
     ```
+
+The package ID is `VisionFI.PolicyAnalyzer`. The current public C# namespace is `VisionFI.Scout.Authoring`.
+
+For temporary file-based distribution, place the `.nupkg` in a local folder and add that folder as a NuGet source:
+
+```bash
+dotnet nuget add source ./nuget-local --name VisionFI-Local
+dotnet add package VisionFI.PolicyAnalyzer --version 0.1.0 --source ./nuget-local
+```
+
+When hosted by the VisionFI downloads portal, the stable download ID is expected to be:
+
+```text
+nuget-policy-analyzer
+```
 
 ## Author a Rule Bundle
 
